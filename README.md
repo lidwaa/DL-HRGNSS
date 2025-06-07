@@ -1,94 +1,110 @@
-# GNSS-based Earthquake Magnitude Prediction
+# DL-HRGNSS — Prédiction de la magnitude sismique à partir de données GNSS
 
-This project provides a tool for predicting earthquake magnitudes using GNSS (Global Navigation Satellite System) displacement data.
+Ce projet permet d'entraîner et d'utiliser un modèle de deep learning pour estimer la magnitude d'un séisme à partir des données GNSS (fichiers SAC) de plusieurs stations.
 
-## Requirements
+---
 
-- Python 3.8 or higher
+## 1. Installation & Dépendances
+
+- Python 3.8+
 - TensorFlow 2.x
-- NumPy
-- Pandas
+- NumPy, Pandas, ObsPy, tqdm, matplotlib
 
-Install dependencies:
-
-```bash
-pip install tensorflow numpy pandas
-```
-
-## Input Data Format
-
-The script expects a CSV file with the following format:
-
-1. Must contain exactly 181 rows (representing 0-180 seconds)
-2. Must have the following columns:
-   - time_second: Time in seconds (0-180)
-   - station1_east: East displacement for station 1 (meters)
-   - station1_north: North displacement for station 1 (meters)
-   - station1_up: Up displacement for station 1 (meters)
-   - station2_east: East displacement for station 2 (meters)
-   - station2_north: North displacement for station 2 (meters)
-   - station2_up: Up displacement for station 2 (meters)
-   - station3_east: East displacement for station 3 (meters)
-   - station3_north: North displacement for station 3 (meters)
-   - station3_up: Up displacement for station 3 (meters)
-
-Example of CSV format:
-
-```csv
-time_second,station1_east,station1_north,station1_up,station2_east,station2_north,station2_up,station3_east,station3_north,station3_up
-0,0.001,-0.002,0.003,0.002,0.001,-0.001,0.000,0.001,0.002
-1,0.002,-0.003,0.004,0.003,0.002,-0.002,0.001,0.002,0.003
-...
-```
-
-## Usage
-
-To predict the magnitude for a single earthquake event:
+Installe tout avec :
 
 ```bash
-python predict_magnitude_from_csv.py path/to/your/data.csv
+pip install -r requirements.txt
 ```
 
-Optional arguments:
+---
 
-- `--model`: Path to the model file (default: 'output/model/model.h5')
+## 2. Organisation des données
 
-Example:
+- **waveforms_data/waveforms/subduction.XXXXX/** :  
+  Dossiers d'événements, chacun contenant les fichiers SAC des stations (ex : `STATION.LYN.sac`, `STATION.LYE.sac`, `STATION.LYZ.sac`).
+
+- **data/GNSS_M3S_181/** :  
+  Dossier où sont générés les fichiers d'entraînement :
+
+  - `xdata.npy` : données GNSS (shape : n_events, 3, 181, 3)
+  - `ydata.npy` : magnitudes cibles
+  - `info_data_3stations.csv` : métadonnées
+
+- **output/model/model.h5** :  
+  Modèle entraîné sauvegardé.
+
+---
+
+## 3. Préparation des données
+
+Pour générer les fichiers d'entraînement à partir de tous les événements :
 
 ```bash
-python predict_magnitude_from_csv.py gnss_data.csv --model output/model/model.h5
+python prepare_gnss_3stations.py
 ```
 
-## Output
+- Le script sélectionne 3 stations par événement, lit les 3 composantes (N, E, Z) sur 181 points, et gère les fichiers manquants.
+- Les fichiers sont générés dans `data/GNSS_M3S_181/`.
 
-The script will output either:
+---
 
-- The predicted earthquake magnitude (if successful)
-- An error message explaining what went wrong (if unsuccessful)
+## 4. Entraînement du modèle
 
-Example output:
+Lance l'entraînement avec :
 
+```bash
+python main.py
 ```
-Predicted Earthquake Magnitude: 6.75
+
+- Le script utilise les fichiers `xdata.npy` et `ydata.npy` pour entraîner un modèle CNN.
+- Le modèle est sauvegardé dans `output/model/model.h5`.
+
+---
+
+## 5. Prédiction sur de nouveaux événements
+
+Pour prédire la magnitude à partir d'un dossier de 9 fichiers SAC (3 stations × 3 composantes) :
+
+1. Modifie la variable `sac_folder` dans `predict_magnitude_from_sac_folder.py` pour pointer vers ton dossier.
+2. Lance :
+   ```bash
+   python predict_magnitude_from_sac_folder.py
+   ```
+
+- Le script affiche la magnitude prédite.
+
+Pour prédire sur un lot d'événements, prépare un `xdata.npy` et utilise un mini-script :
+
+```python
+import numpy as np
+from keras.models import load_model
+xdata = np.load("data/GNSS_M3S_181/xdata.npy")
+model = load_model("output/model/model.h5", compile=False)
+y_pred = model.predict(xdata)
+print(y_pred.flatten())
 ```
 
-## Error Handling
+---
 
-The script performs several validations:
+## 6. Visualisation
 
-1. Checks if the input CSV file exists
-2. Verifies the CSV has the correct number of rows (181)
-3. Validates that all required columns are present
-4. Ensures the model file exists and can be loaded
+- Utilise `visualise_sac.py` pour afficher les séries temporelles d'une station (3 composantes).
+- Utilise `Data_plot.ipynb` pour explorer les données GNSS ou les résultats.
 
-If any of these checks fail, an appropriate error message will be displayed.
+---
 
-## Model Information
+## 7. Bonnes pratiques
 
-The model expects GNSS displacement data with the following dimensions:
+- Le dossier `waveforms_data/` est ignoré par git (voir `.gitignore`).
+- Les gros fichiers de données et modèles ne sont pas versionnés.
 
-- 3 GNSS stations
-- 181 seconds of data (0-180 seconds)
-- 3 components per station (East, North, Up)
+---
 
-The model has been trained on a dataset of earthquakes with magnitudes ranging from approximately 5.0 to 7.5.
+## 8. Ressources complémentaires
+
+- Données GNSS originales : [Zenodo 10.5281/zenodo.4008690](https://doi.org/10.5281/zenodo.4008690)
+- Article de référence : [Quinteros et al., 2024](https://doi.org/10.1016/j.jsames.2024.104815)
+
+---
+
+**Pour toute question ou adaptation de script, consulte les fichiers Python du projet ou demande de l'aide !**

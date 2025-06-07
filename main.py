@@ -18,6 +18,9 @@ case_nm = 'GNSS_M3S_181'  # Dataset name
 dir_out = './output'  # Main output directory
 dir_model = f'{dir_out}/model'  # Directory for saving the trained model
 
+batch_size = 8
+
+
 def main():
     # Create minimal output directory
     os.makedirs(dir_model, exist_ok=True)

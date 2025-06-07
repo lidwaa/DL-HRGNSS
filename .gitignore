@@ -40,10 +40,19 @@ ENV/
 .DS_Store
 
 # Model outputs and data
-output/
-*.h5
-*.hdf5
-*.pkl
+#output/
+#*.h5
+#*.hdf5
+#*.pkl
 
 # Keep the data directory but ignore large files
-data/**/*.npy 
+data/**/*.npy
+
+# Add waveforms_data/ to the list of directories to ignore
+waveforms_data/
+
+# Ignorer les fichiers de données générés
+xdata.npy
+ydata.npy
+xdata_*.npy
+ydata_*.npy 

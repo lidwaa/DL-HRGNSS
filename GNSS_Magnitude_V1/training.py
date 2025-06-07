@@ -41,7 +41,7 @@ def trainer(nst, nt, nc, model_dir, case_nm, x_train, y_train, x_val, y_val):
     os.makedirs(model_dir, exist_ok=True)
     
     # Training parameters
-    batch_size = 128
+    batch_size = 16
     epochs = 200
     initial_learning_rate = 1e-2
     decay = 1e-1 / epochs
